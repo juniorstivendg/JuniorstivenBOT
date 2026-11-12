@@ -12,6 +12,7 @@
     "pause": "pkill -STOP -f '[n]ode src/index.js' && echo 'JUNIORSTIVEN BOT PAUSADO' || echo 'EL BOT NO ESTA ACTIVO'"
   },
   "dependencies": {
+    "@distube/ytdl-core": "^5.2.1",
     "@whiskeysockets/baileys": "6.7.24",
     "dotenv": "^16.4.7",
     "pino": "^9.6.0",

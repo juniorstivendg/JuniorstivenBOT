@@ -1,4 +1,11 @@
 import yts from 'yt-search'
+import { Ytdl, Quality, chooseFormat } from '@distube/ytdl-core'
+
+// Comando para descargar audio de YouTube (Baileys)
+// Requiere: npm install yt-search @distube/ytdl-core  (Node 22.22+ / 24.15+ / 26+)
+
+const yt = new Ytdl()
+const MAX_SECONDS = 20 * 60 // limite: 20 minutos
 
 const cmd = {
   command: ['play', 'mp3', 'ytmp3', 'ytaudio', 'playaudio'],
@@ -26,6 +33,10 @@ const cmd = {
         const video_info = await getVideoInfo(query, video_id)
 
         if (video_info) {
+          if (Number(video_info.seconds) > MAX_SECONDS) {
+            return reply('《✧》El video es muy largo (máximo 20 minutos).')
+          }
+
           url = video_info.url || `https://youtu.be/${video_info.videoId}`
           title = video_info.title || title
           thumbnail = video_info.image || video_info.thumbnail || null
@@ -56,7 +67,7 @@ const cmd = {
         return reply('《✧》No se encontró un video válido de YouTube.')
       }
 
-      const audio = await getAudioFromApi(url)
+      const audio = await getAudio(url, title)
 
       if (!audio?.buffer?.length) {
         return reply('《✧》No se pudo descargar el *audio*, intenta más tarde.')
@@ -64,10 +75,11 @@ const cmd = {
 
       await sock.sendMessage(chat, {
         audio: audio.buffer,
-        fileName: audio.name || `${title}.mp3`,
-        mimetype: 'audio/mpeg'
+        fileName: audio.name,
+        mimetype: audio.mimetype
       }, { quoted: msg })
     } catch (e) {
+      console.error('[ytmp3]', e)
       await reply(
         `> Ocurrió un error al ejecutar el comando *${usedPrefix + command}*.\n> [Error: *${e.message}*]`
       )
@@ -119,32 +131,39 @@ async function getVideoInfo(input, video_id) {
   return search.videos?.[0] || search.all?.find(v => v.type === 'video') || null
 }
 
-async function getAudioFromApi(url) {
-  const apikey = process.env.LEMPI_API_KEY || 'montekey28'
-  const api_url = `https://api.lempi.lat/dl/yta?url=${encodeURIComponent(url)}&apikey=${apikey}`
+async function getAudio(url, title = 'audio') {
+  const info = await yt.getInfo(url)
 
-  const res = await fetch(api_url, {
-    headers: { accept: 'application/json' },
-    signal: AbortSignal.timeout(30_000)
+  // Prefiere AAC (m4a), que WhatsApp reproduce en todos los telefonos
+  const format = chooseFormat(info.formats, {
+    quality: Quality.HighestAudio,
+    filter: [
+      { hasVideo: false, audioCodec: 'mp4a' },
+      { hasVideo: false },
+      { hasAudio: true }
+    ]
   })
 
-  if (!res.ok) throw new Error(`API falló: HTTP ${res.status}`)
+  const stream = yt.download(info, { format })
+  const timer = setTimeout(() => stream.destroy(new Error('Tiempo de descarga agotado')), 120_000)
 
-  const json = await res.json()
+  try {
+    const chunks = []
+    for await (const chunk of stream) chunks.push(chunk)
 
-  if (!json?.status || !json?.descarga?.url) {
-    throw new Error('No se encontró el enlace de descarga en la API.')
-  }
+    const container = format.container || 'mp4'
+    const ext = container === 'mp4' ? 'm4a' : container
+    const safe_title = String(title || info.videoDetails?.title || 'audio')
+      .replace(/[\\/:*?"<>|]/g, '')
+      .trim()
+      .slice(0, 80) || 'audio'
 
-  const audio_res = await fetch(json.descarga.url, {
-    signal: AbortSignal.timeout(120_000)
-  })
-  if (!audio_res.ok) throw new Error(`No se pudo descargar el audio: HTTP ${audio_res.status}`)
-
-  const buffer = Buffer.from(await audio_res.arrayBuffer())
-
-  return {
-    buffer,
-    name: json.descarga.archivo || 'audio.mp3'
+    return {
+      buffer: Buffer.concat(chunks),
+      name: `${safe_title}.${ext}`,
+      mimetype: container === 'mp4' ? 'audio/mp4' : `audio/${container}`
+    }
+  } finally {
+    clearTimeout(timer)
   }
 }
