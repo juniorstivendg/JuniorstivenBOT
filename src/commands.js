@@ -545,8 +545,12 @@ case "tictactoe": {
 }
 
 case "owner":
+  return font(`👑 PROPIETARIO: JUNIORSTIVEN
 
-  return font("👑 Propietario: JUNIORSTIVEN");
+📲 CONTACTAME:
+
+WHATSAPP: +57 310 608 3491
+INSTAGRAM: @Juniorstivendg`);
 
 case "admins": {
         const admins = participants.filter(isAdmin).map(p => p.id);
