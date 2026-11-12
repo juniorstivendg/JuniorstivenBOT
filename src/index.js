@@ -104,28 +104,36 @@ const caption = entering
           ? `𝗪𝗘𝗟𝗖𝗢𝗠𝗘 ${username}\n\n• Espero que te sientas a gusto y la pases bien ✌🏽!`
           : `𝗕𝗬𝗘 ${username}\n\n• No te extrañaremos, ojala no vuelvas 😂!`;
 
-        let avatar = null;
+let avatar = null;
+try {
+  const avatarUrl = await sock.profilePictureUrl(user, "image");
+  const response = await fetch(avatarUrl);
 
-        try {
-          const avatarUrl = await sock.profilePictureUrl(user, "image");
-          const response = await fetch(avatarUrl);
-          if (response.ok) {
-            avatar = Buffer.from(await response.arrayBuffer());
-          }
-        } catch {}
+  if (!response.ok) {
+    throw new Error("HTTP " + response.status);
+  }
 
-        if (avatar) {
-          await sock.sendMessage(id, {
-            image: avatar,
-            caption,
-            mentions: [user]
-          });
-        } else {
-          await sock.sendMessage(id, {
-            text: caption,
-            mentions: [user]
-          });
-        }
+  avatar = Buffer.from(await response.arrayBuffer());
+
+  if (!avatar.length) {
+    throw new Error("La imagen llegó vacía");
+  }
+} catch (error) {
+  console.error("ERROR OBTENIENDO FOTO DE PERFIL:", error);
+}
+
+if (avatar) {
+  await sock.sendMessage(id, {
+    image: avatar,
+    caption,
+    mentions: [user]
+  });
+} else {
+  await sock.sendMessage(id, {
+    text: caption,
+    mentions: [user]
+  });
+}
 
         const audioPath = new URL(
           entering ? "../media/welcome.mp3" : "../media/bye.mp3",
