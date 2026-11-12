@@ -1,4 +1,3 @@
-import ytmp3 from './commands/downloads/ytmp3.js'
 import { font } from "./font.js";
 import { menu } from "./menu.js";
 import fs from "node:fs";
@@ -258,7 +257,6 @@ if (adminModes[jid] && command !== "modoadmin" &&
   const admin = await issuerIsAdmin(sock, jid, msg, metadata);
 
   
-  if (ytmp3.command.includes(command)) { await ytmp3.run({ sock, msg, args, command, usedPrefix: "." }); return; }
   // WELCOME_COMMANDS_PATCH
   if (["welcome", "bye"].includes(command)) {
     if (!admin) return font("Solo los administradores del grupo pueden usar este comando.");
