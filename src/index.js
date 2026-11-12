@@ -90,16 +90,19 @@ async function startBot() {
 
         
       // WELCOME_EVENT_PATCH
-      let welcomeSettings = { welcome: true, bye: true };
-      try {
-        const { readFileSync } = await import("node:fs");
-        welcomeSettings = JSON.parse(
-          readFileSync(new URL("../data/welcome.json", import.meta.url), "utf8")
-        );
-      } catch {}
-      if (entering ? welcomeSettings.welcome === false : welcomeSettings.bye === false) {
-        continue;
-      }
+let welcomeSettings = {};
+try {
+  const { readFileSync } = await import("node:fs");
+  welcomeSettings = JSON.parse(
+    readFileSync(new URL("../data/welcome.json", import.meta.url), "utf8")
+  );
+} catch {}
+
+const groupSettings = welcomeSettings[id] || { welcome: true, bye: true };
+
+if (entering ? groupSettings.welcome === false : groupSettings.bye === false) {
+  continue;
+}
 const caption = entering
           ? `𝗪𝗘𝗟𝗖𝗢𝗠𝗘 ${username}\n\n• Espero que te sientas a gusto y la pases bien ✌🏽!`
           : `𝗕𝗬𝗘 ${username}\n\n• No te extrañaremos, ojala no vuelvas 😂!`;

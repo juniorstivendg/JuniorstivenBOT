@@ -1,0 +1,2 @@
+import { font } from "./font.js";
+export const menu = font("\n            𝗝𝗨𝗡𝗜𝗢𝗥𝗦𝗧𝗜𝗩𝗘𝗡 𝗕𝗢𝗧\n\n   Juniorstiven, tu mejor botsito ✨\n\n   🛍️ adquiereme:\n\n   📸 Whatsapp: + 57 310 608 3491\n   📸 Instagram: @Juniorstivendg\n\n   \n📌 𝗜𝗡𝗙𝗢𝗥𝗠𝗔𝗖𝗜Ó𝗡\n\n🥷🏽 .𝗺𝗲𝗻𝘂\n🥷🏽 .𝗼𝘄𝗻𝗲𝗿\n\n⚙️ 𝗔𝗗𝗠𝗜𝗡𝗜𝗦𝗧𝗥𝗔𝗖𝗜Ó𝗡\n\n🥷🏽 .kick\n🥷🏽 .todos\n🥷🏽 .admins\n🥷🏽 .mute/unmute\n🥷🏽 .promote/demote\n\n\n©️ 𝗝𝗨𝗡𝗜𝗢𝗥𝗦𝗧𝗜𝗩𝗘𝗡 𝗕𝗢𝗧\n");

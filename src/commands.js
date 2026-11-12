@@ -219,7 +219,7 @@ function loadWelcomeSettings() {
   try {
     return JSON.parse(fs.readFileSync("data/welcome.json", "utf8"));
   } catch {
-    return { welcome: true, bye: true };
+    return {};
   }
 }
 
@@ -265,8 +265,10 @@ if (adminModes[jid] && command !== "modoadmin" &&
       return font(`Uso: .${command} on/off`);
     }
     const settings = loadWelcomeSettings();
-    settings[command] = option === "on";
-    saveWelcomeSettings(settings);
+const groupSettings = settings[jid] || { welcome: true, bye: true };
+groupSettings[command] = option === "on";
+settings[jid] = groupSettings;
+saveWelcomeSettings(settings);
     const label = command === "welcome" ? "Bienvenida" : "Despedida";
     return font(`${label} ${option === "on" ? "activada" : "desactivada"} correctamente.`);
   }

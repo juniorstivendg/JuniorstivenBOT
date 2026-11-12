@@ -1,0 +1,39 @@
+import { font } from "./font.js";
+
+export const menu = font(`
+             JUNIORSTIVEN BOT
+
+   Juniorstiven, tu mejor botsito ✨
+
+   
+🛍️️️ ADQUIEREME:
+
+🎁 Whatsapp: + 57 310 608 3491
+🎁 Instagram: @Juniorstivendg
+
+📌 INFORMACIÓN
+
+🥷🏽 .menu
+🥷🏽 .owner
+
+⚙️ ADMINISTRACIÓN
+
+🥷🏽 .kick
+🥷🏽 .todos
+🥷🏽 .hidetag
+🥷🏽 .admins
+🥷🏽 .mute/mute/mutelist
+🥷🏽 .promote/demote
+🥷🏽 .gon/goff
+🥷🏽 .link
+🥷🏽 .fantasmas
+🥷🏽 .modoadmin on/off
+
+🤹🏽 STICKERS
+
+🥷🏽 .qc
+🥷🏽 .s
+
+
+©️ JUNIORSTIVEN BOT
+`);

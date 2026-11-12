@@ -1,0 +1,18 @@
+{
+  "name": "juniorstiven-bot-v2",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "restart": "node --check src/index.js && node --check src/commands.js && node --check src/menu.js && node --check src/font.js && (pkill -f '^node src/index.js$' || true) && sleep 2 && npm start"
+  },
+  "dependencies": {
+    "@whiskeysockets/baileys": "6.7.24",
+    "dotenv": "^16.4.7",
+    "pino": "^9.6.0",
+    "qrcode-terminal": "^0.12.0",
+    "sharp": "^0.35.5"
+  }
+}
