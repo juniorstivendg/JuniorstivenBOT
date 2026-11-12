@@ -1,4 +1,3 @@
-mkdir -p commands/downloads && cat > commands/downloads/ytmp3.js <<'EOF'
 import yts from 'yt-search'
 
 const cmd = {
@@ -149,5 +148,3 @@ async function getAudioFromApi(url) {
     name: json.descarga.archivo || 'audio.mp3'
   }
 }
-EOF
-npm install yt-search && node -v
