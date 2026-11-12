@@ -5,10 +5,9 @@ export const menu = font(`
 
       Juniorstiven, tu mejor botsito ✨
 
-   
-🛍️️️ ADQUIEREME:
+🛍️ ADQUIEREME:
 
-🎁 Whatsapp: + 57 310 608 3491
+🎁 Whatsapp: +57 310 608 3491
 🎁 Instagram: @Juniorstivendg
 
 📌 INFORMACIÓN
@@ -22,14 +21,16 @@ export const menu = font(`
 🥷🏽 .kick
 🥷🏽 .todos
 🥷🏽 .admins
-🥷🏽 .mute/mute/mutelist
-🥷🏽 .promote/demote
-🥷🏽 .gon/goff
+🥷🏽 .mute
+🥷🏽 .unmute
+🥷🏽 .mutelist
+🥷🏽 .promote / .demote
+🥷🏽 .gon / .goff
 🥷🏽 .link
 🥷🏽 .fantasmas
 🥷🏽 .modoadmin on/off
-• welcome on/off
-• bye on/off
+🥷🏽 .welcome on/off
+🥷🏽 .bye on/off
 
 🤹🏽 DIVERSION
 
