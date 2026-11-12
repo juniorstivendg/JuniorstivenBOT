@@ -616,28 +616,28 @@ case "mutelist": {
 }
 
 case "fantasmas": {
-        const now = Date.now();
-        const limit = 72 * 60 * 60 * 1000;
+  const now = Date.now();
+  const limit = 72 * 60 * 60 * 1000;
 
-        const ghosts = participants
-          .filter(p => {
-            const last = activity[`${jid}:${p.id}`];
-            return last && now - last >= limit && !isAdmin(p);
-          })
-          .map(p => p.id);
+  const ghosts = participants
+    .filter(p => {
+      const last = activity[`${jid}:${p.id}`];
+      return last && now - last >= limit && !isAdmin(p);
+    })
+    .map(p => p.id);
 
-        if (!ghosts.length) {
-          return "No hay participantes con 3 días de inactividad comprobada. El registro empieza desde que se activa esta función.";
-        }
+  if (!ghosts.length) {
+    return font("No hay participantes con 3 días o más de inactividad comprobada.");
+  }
 
-        await sock.sendMessage(jid, {
-          text: `👻 INACTIVOS POR 3 DÍAS O MÁS\n\n${ghosts.map(id => `@${id.split("@")[0]}`).join("\n")}`,
-          mentions: ghosts
-        }, { quoted: msg });
-        return null;
-      }
+  await sock.sendMessage(jid, {
+    text: `${font("👻 INACTIVOS POR 3 DÍAS O MÁS")}\n\n${ghosts.map(id => `@${id.split("@")[0]}`).join("\n")}`,
+    mentions: ghosts
+  }, { quoted: msg });
 
-      
+  return null;
+}
+
 // JUNIORSTIVEN_STICKERS_V2
 case "toimg": {
     const quoted = getContext(msg).quotedMessage;
