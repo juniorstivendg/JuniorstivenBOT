@@ -410,36 +410,86 @@ case "ppt": {
 
 
 case "trivia": {
-    const sender = msg.key.participant || msg.key.remoteJid;
-    const key = jid + ":" + sender;
-    const questions = [
-        ["¿Cuál es la capital de Colombia?", "bogota", "Bogotá"],
-        ["¿Cuántos lados tiene un hexágono?", "6", "Seis"],
-        ["¿Cuál es el planeta rojo?", "marte", "Marte"],
-        ["¿Quién escribió Don Quijote?", "miguel de cervantes", "Miguel de Cervantes"],
-        ["¿Cuánto es 9 x 8?", "72", "72"],
-        ["¿Cuál es el océano más grande?", "pacifico", "Pacífico"],
-        ["¿Cuántos continentes hay?", "7", "Siete"],
-        ["¿Qué gas necesitan las plantas para la fotosíntesis?", "dioxido de carbono", "Dióxido de carbono"],
-        ["¿Cuál es el animal terrestre más grande?", "elefante", "Elefante"],
-        ["¿En qué continente está Egipto?", "africa", "África"]
-    ];
-    if (args.length) {
-        const game = triviaGames.get(key);
-        if (!game) return font("No tienes una pregunta activa. Escribe .trivia");
-        const answer = args.join(" ").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
-        const correct = game.answer.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
-        triviaGames.delete(key);
-        if (answer === correct) {
-            const points = (triviaPoints.get(sender) || 0) + 1;
-            triviaPoints.set(sender, points);
-            return font("¡CORRECTO! +1 punto\nPuntos acumulados: " + points);
-        }
-        return font("Respuesta incorrecta.\nRespuesta correcta: " + game.display);
-    }
-    const q = questions[Math.floor(Math.random() * questions.length)];
-    triviaGames.set(key, { answer: q[1], display: q[2] });
-    return font("TRIVIA\n\n" + q[0] + "\n\nResponde con:\n.trivia tu respuesta");
+const sender = msg.key.participant || msg.key.remoteJid;
+const key = jid + ":" + sender;
+const normalizeAnswer = value => String(value)
+.normalize("NFD")
+.replace(/[\u0300-\u036f]/g, "")
+.toLowerCase().trim();
+
+const questions = JSON.parse(
+fs.readFileSync("data/trivia-questions.json", "utf8")
+);
+
+if (args.length) {
+const game = triviaGames.get(key);
+if (!game) return font("No tienes una pregunta activa. Escribe .trivia");
+
+const answer = normalizeAnswer(args.join(" "));
+const correct = answer === game.letter.toLowerCase() ||
+answer === normalizeAnswer(game.answer);
+
+triviaGames.delete(key);
+
+if (correct) {
+const points = (triviaPoints.get(sender) || 0) + 1;
+triviaPoints.set(sender, points);
+return font("¡CORRECTO! +1 punto\nPuntos acumulados: " + points);
+}
+
+return font("Respuesta incorrecta.\nRespuesta correcta: " +
+game.letter + ") " + game.answer);
+}
+
+const historyPath = "data/trivia-history.json";
+let history = {};
+
+try {
+history = JSON.parse(fs.readFileSync(historyPath, "utf8"));
+} catch {}
+
+let used = Array.isArray(history[jid]) ? history[jid] : [];
+const usedSet = new Set(used);
+let available = questions.filter(q => !usedSet.has(q.id));
+
+if (available.length === 0) {
+used = [];
+available = questions;
+}
+
+const q = available[Math.floor(Math.random() * available.length)];
+const letters = ["A", "B", "C", "D"];
+const correctIndex = q.options.indexOf(q.answer);
+
+if (correctIndex < 0 || !q.options.length) {
+return font("Error al cargar esta pregunta. Escribe .trivia nuevamente.");
+}
+
+const correctLetter = letters[correctIndex];
+
+triviaGames.set(key, {
+answer: q.answer,
+letter: correctLetter
+});
+
+used.push(q.id);
+history[jid] = used;
+
+fs.mkdirSync("data", { recursive: true });
+fs.writeFileSync(historyPath + ".tmp", JSON.stringify(history));
+fs.renameSync(historyPath + ".tmp", historyPath);
+
+const optionsText = q.options.map((option, i) =>
+letters[i] + ") " + option
+).join("\n");
+
+return font(
+"TRIVIA\n\n" +
+(q.category === "Razonamiento" ? "SITUACIÓN:\n" : "") +
+q.question + "\n\n" +
+optionsText +
+"\n\nResponde con: .trivia A, B, C o D"
+);
 }
 
 case "tictactoe": {
