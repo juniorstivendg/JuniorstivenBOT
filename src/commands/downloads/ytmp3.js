@@ -1,169 +1,106 @@
 import yts from 'yt-search'
-import { Ytdl, Quality, chooseFormat } from '@distube/ytdl-core'
 
-// Comando para descargar audio de YouTube (Baileys)
-// Requiere: npm install yt-search @distube/ytdl-core  (Node 22.22+ / 24.15+ / 26+)
-
-const yt = new Ytdl()
-const MAX_SECONDS = 20 * 60 // limite: 20 minutos
+// Comando .play: descarga el audio de YouTube y lo envia como MP3 (sin portada ni descripcion).
+// Usa la API publica api-faa.my.id. Si algun dia se cae, solo hay que cambiar API().
+const API = (url) => `https://api-faa.my.id/faa/ytmp3?url=${encodeURIComponent(url)}`
+const MAX_SECONDS = 20 * 60
 
 const cmd = {
   command: ['play', 'mp3', 'ytmp3', 'ytaudio', 'playaudio'],
   category: 'downloads',
   description: 'Descargar una canción de YouTube.',
 
-  run: async ({ msg, sock, args, usedPrefix = '', command = '' }) => {
+  run: async ({ msg, sock, args }) => {
     const chat = msg.key.remoteJid
     const reply = (text) => sock.sendMessage(chat, { text }, { quoted: msg })
 
     try {
-      if (!args?.[0]) {
-        return reply('《✧》Por favor, menciona el nombre o URL del video que deseas descargar')
-      }
+      if (!args?.[0]) return reply('《✧》Escribe el nombre o la URL de la canción.')
 
-      const input_text = args.join(' ').trim()
-      const video_id = getVideoId(input_text)
-      const query = video_id ? `https://youtu.be/${video_id}` : input_text
-
-      let url = query
+      const input = args.join(' ').trim()
+      const id = getVideoId(input)
+      let video_id = id
       let title = 'audio'
-      let thumbnail = null
+      let seconds = 0
 
       try {
-        const video_info = await getVideoInfo(query, video_id)
-
-        if (video_info) {
-          if (Number(video_info.seconds) > MAX_SECONDS) {
-            return reply('《✧》El video es muy largo (máximo 20 minutos).')
-          }
-
-          url = video_info.url || `https://youtu.be/${video_info.videoId}`
-          title = video_info.title || title
-          thumbnail = video_info.image || video_info.thumbnail || null
-
-          const views = Number(video_info.views || 0).toLocaleString('es-HN')
-          const channel = video_info.author?.name || video_info.author || 'Desconocido'
-
-          const info_message = `➩ Descargando › *${title}*
-
-> ❖ Canal › *${channel}*
-> ⴵ Duración › *${video_info.timestamp || 'Desconocido'}*
-> ❀ Vistas › *${views}*
-> ✩ Publicado › *${video_info.ago || 'Desconocido'}*
-> ❒ Enlace › *${url}*`
-
-          if (thumbnail) {
-            await sock.sendMessage(chat, {
-              image: { url: thumbnail },
-              caption: info_message
-            }, { quoted: msg })
-          } else {
-            await reply(info_message)
-          }
+        const v = id
+          ? await yts({ videoId: id })
+          : (await yts(input)).videos?.[0]
+        if (v) {
+          video_id = v.videoId || id
+          title = v.title || title
+          seconds = Number(v.seconds) || 0
         }
       } catch {}
 
-      if (!isYTUrl(url)) {
-        return reply('《✧》No se encontró un video válido de YouTube.')
-      }
+      if (!video_id) return reply('《✧》No se encontró ningún video.')
+      if (seconds > MAX_SECONDS) return reply('《✧》El video es muy largo (máximo 20 minutos).')
 
-      const audio = await getAudio(url, title)
-
-      if (!audio?.buffer?.length) {
-        return reply('《✧》No se pudo descargar el *audio*, intenta más tarde.')
-      }
+      const buffer = await download(`https://youtu.be/${video_id}`)
 
       await sock.sendMessage(chat, {
-        audio: audio.buffer,
-        fileName: audio.name,
-        mimetype: audio.mimetype
+        audio: buffer,
+        mimetype: 'audio/mpeg',
+        fileName: `${cleanName(title)}.mp3`
       }, { quoted: msg })
     } catch (e) {
       console.error('[ytmp3]', e)
-      await reply(
-        `> Ocurrió un error al ejecutar el comando *${usedPrefix + command}*.\n> [Error: *${e.message}*]`
-      )
+      await reply(`《✧》No se pudo enviar el audio.\n> ${e.message}`)
     }
   }
 }
 
 export default cmd
 
-const isYTUrl = (url = '') =>
-  /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.be)\/.+$/i.test(url)
+const cleanName = (t) =>
+  String(t || 'audio').replace(/[\\/:*?"<>|]/g, '').trim().slice(0, 80) || 'audio'
 
 const getVideoId = (text = '') => {
-  const raw = String(text || '').trim()
-  if (/^[a-zA-Z0-9_-]{11}$/.test(raw)) return raw
-
-  const patterns = [
-    /youtu\.be\/([a-zA-Z0-9_-]{11})/,
-    /youtube\.com\/watch\?v=([a-zA-Z0-9_-]{11})/,
-    /youtube\.com\/embed\/([a-zA-Z0-9_-]{11})/,
-    /youtube\.com\/shorts\/([a-zA-Z0-9_-]{11})/,
-    /youtube\.com\/live\/([a-zA-Z0-9_-]{11})/,
-    /youtube\.com\/v\/([a-zA-Z0-9_-]{11})/,
-    /[?&]v=([a-zA-Z0-9_-]{11})/
-  ]
-
-  for (const pattern of patterns) {
-    const match = raw.match(pattern)
-    if (match?.[1]) return match[1]
-  }
-  return null
+  const s = String(text).trim()
+  if (/^(?=.*[A-Z0-9_-])[\w-]{11}$/.test(s)) return s
+  return s.match(
+    /(?:youtu\.be\/|youtube\.com\/(?:watch\?(?:.*&)?v=|embed\/|shorts\/|live\/|v\/))([\w-]{11})/
+  )?.[1] || null
 }
 
-async function getVideoInfo(input, video_id) {
-  if (video_id) {
-    try {
-      const info = await yts({ videoId: video_id })
-      if (info?.videoId) {
-        return {
-          ...info,
-          url: `https://youtu.be/${info.videoId}`,
-          image: info.thumbnail || info.image
-        }
-      }
-    } catch {}
-  }
+async function download(url) {
+  const res = await fetch(API(url), { signal: AbortSignal.timeout(60_000) })
+  const text = await res.text()
 
-  const search = await yts(input)
-  return search.videos?.[0] || search.all?.find(v => v.type === 'video') || null
+  let json
+  try { json = JSON.parse(text) } catch { throw new Error(`La API respondió HTTP ${res.status}`) }
+
+  const link = findAudioUrl(json)
+  if (!link) throw new Error(`La API no devolvió enlace: ${text.slice(0, 120)}`)
+
+  const audio = await fetch(link, { signal: AbortSignal.timeout(120_000) })
+  if (!audio.ok) throw new Error(`No se pudo bajar el audio: HTTP ${audio.status}`)
+
+  const buffer = Buffer.from(await audio.arrayBuffer())
+  if (buffer.length < 20_000) throw new Error('El archivo de audio llegó vacío o incompleto')
+  return buffer
 }
 
-async function getAudio(url, title = 'audio') {
-  const info = await yt.getInfo(url)
-
-  // Prefiere AAC (m4a), que WhatsApp reproduce en todos los telefonos
-  const format = chooseFormat(info.formats, {
-    quality: Quality.HighestAudio,
-    filter: [
-      { hasVideo: false, audioCodec: 'mp4a' },
-      { hasVideo: false },
-      { hasAudio: true }
-    ]
-  })
-
-  const stream = yt.download(info, { format })
-  const timer = setTimeout(() => stream.destroy(new Error('Tiempo de descarga agotado')), 120_000)
-
-  try {
-    const chunks = []
-    for await (const chunk of stream) chunks.push(chunk)
-
-    const container = format.container || 'mp4'
-    const ext = container === 'mp4' ? 'm4a' : container
-    const safe_title = String(title || info.videoDetails?.title || 'audio')
-      .replace(/[\\/:*?"<>|]/g, '')
-      .trim()
-      .slice(0, 80) || 'audio'
-
-    return {
-      buffer: Buffer.concat(chunks),
-      name: `${safe_title}.${ext}`,
-      mimetype: container === 'mp4' ? 'audio/mp4' : `audio/${container}`
+// Busca en el JSON el enlace del audio sin depender del nombre exacto del campo
+function findAudioUrl(obj) {
+  const found = []
+  const walk = (v, key = '') => {
+    if (typeof v === 'string') {
+      if (/^https?:\/\//i.test(v)) found.push({ key, v })
+    } else if (v && typeof v === 'object') {
+      for (const [k, x] of Object.entries(v)) walk(x, k)
     }
-  } finally {
-    clearTimeout(timer)
   }
+  walk(obj)
+
+  const bad_key = /thumb|image|img|cover|poster|avatar|icon/i
+  const bad_url = /\.(jpe?g|png|webp|gif)(\?|$)|youtu\.?be/i
+  const score = (f) =>
+    (/mp3|audio|download|dl/i.test(f.key) ? 2 : /url|link/i.test(f.key) ? 1 : 0) +
+    (/\.mp3|\.m4a|audio/i.test(f.v) ? 1 : 0)
+
+  return found
+    .filter((f) => !bad_key.test(f.key) && !bad_url.test(f.v))
+    .sort((a, b) => score(b) - score(a))[0]?.v
 }
