@@ -1,106 +1,200 @@
-import yts from 'yt-search'
+import yts from "yt-search";
 
-// Comando .play: descarga el audio de YouTube y lo envia como MP3 (sin portada ni descripcion).
-// Usa la API publica api-faa.my.id. Si algun dia se cae, solo hay que cambiar API().
-const API = (url) => `https://api-faa.my.id/faa/ytmp3?url=${encodeURIComponent(url)}`
-const MAX_SECONDS = 20 * 60
+const API = "https://api-faa.my.id/faa/ytmp3";
+const MAX_SECONDS = 20 * 60;
+const MAX_BYTES = 20 * 1024 * 1024;
+
+const bold = (text) => {
+  const upper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  const lower = "abcdefghijklmnopqrstuvwxyz";
+  const digits = "0123456789";
+
+  return String(text).replace(/[A-Za-z0-9]/g, (char) => {
+    if (upper.includes(char))
+      return String.fromCodePoint(0x1D5D4 + upper.indexOf(char));
+    if (lower.includes(char))
+      return String.fromCodePoint(0x1D5EE + lower.indexOf(char));
+    return String.fromCodePoint(0x1D7EC + digits.indexOf(char));
+  });
+};
+
+const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+async function request(url, attempts = 2) {
+  let lastError;
+
+  for (let i = 0; i < attempts; i++) {
+    try {
+      const response = await fetch(url, {
+        headers: {
+          "User-Agent": "Mozilla/5.0",
+          "Accept": "application/json, audio/mpeg, */*"
+        },
+        signal: AbortSignal.timeout(60000)
+      });
+
+      if (!response.ok) {
+        const detail = (await response.text()).slice(0, 250);
+        throw new Error(`HTTP ${response.status}: ${detail}`);
+      }
+
+      return response;
+    } catch (error) {
+      lastError = error;
+      if (i < attempts - 1) await wait(1500);
+    }
+  }
+
+  throw lastError;
+}
+
+function findAudioUrl(data) {
+  if (!data || typeof data !== "object") return null;
+
+  for (const [key, value] of Object.entries(data)) {
+    if (
+      typeof value === "string" &&
+      /^https?:\/\//i.test(value) &&
+      (
+        /^(mp3|audio|audio_url|download|download_url)$/i.test(key) ||
+        /\.mp3(?:[?#]|$)/i.test(value)
+      )
+    ) {
+      return value;
+    }
+  }
+
+  for (const value of Object.values(data)) {
+    if (value && typeof value === "object") {
+      const found = findAudioUrl(value);
+      if (found) return found;
+    }
+  }
+
+  return null;
+}
 
 const cmd = {
-  command: ['play', 'mp3', 'ytmp3', 'ytaudio', 'playaudio'],
-  category: 'downloads',
-  description: 'Descargar una canción de YouTube.',
+  command: ["play", "mp3", "ytmp3", "ytaudio", "playaudio"],
+  category: "downloads",
+  description: "Descarga audio de YouTube",
 
-  run: async ({ msg, sock, args }) => {
-    const chat = msg.key.remoteJid
-    const reply = (text) => sock.sendMessage(chat, { text }, { quoted: msg })
+  run: async ({ msg, sock, args = [] }) => {
+    const jid = msg?.key?.remoteJid;
+
+    const reply = async (text) => {
+      await sock.sendMessage(
+        jid,
+        { text: bold(text) },
+        { quoted: msg }
+      );
+    };
 
     try {
-      if (!args?.[0]) return reply('《✧》Escribe el nombre o la URL de la canción.')
+      const query = Array.isArray(args) ? args.join(" ").trim() : String(args).trim();
 
-      const input = args.join(' ').trim()
-      const id = getVideoId(input)
-      let video_id = id
-      let title = 'audio'
-      let seconds = 0
+      if (!query) {
+        return reply("Escribe el nombre de una canción. Ejemplo: .play nombre de la canción");
+      }
+
+      await reply("Buscando la canción...");
+
+      const search = await yts(query);
+      const video = search?.videos?.[0];
+
+      if (!video?.url || !video?.title) {
+        return reply("No encontré esa canción. Intenta con otro nombre.");
+      }
+
+      if (video.seconds && video.seconds > MAX_SECONDS) {
+        return reply("La canción supera el límite de 20 minutos.");
+      }
+
+      const youtubeUrl = video.url;
+
+      await reply("Preparando el audio...");
+
+      const apiUrl = `${API}?url=${encodeURIComponent(youtubeUrl)}`;
+      const apiResponse = await request(apiUrl, 2);
+
+      let data;
+      try {
+        data = await apiResponse.json();
+      } catch {
+        throw new Error("La API no devolvió una respuesta JSON válida.");
+      }
+
+      const audioUrl = findAudioUrl(data);
+
+      if (!audioUrl) {
+        throw new Error("La API no entregó un enlace de audio válido.");
+      }
+
+      await reply("Descargando y preparando el archivo...");
+
+      const audioResponse = await request(audioUrl, 2);
+      const contentType = audioResponse.headers.get("content-type") || "";
+
+      if (
+        contentType.includes("text/html") ||
+        contentType.includes("application/json")
+      ) {
+        throw new Error("El servidor devolvió una página web en lugar del audio.");
+      }
+
+      const declaredSize = Number(audioResponse.headers.get("content-length") || 0);
+
+      if (declaredSize > MAX_BYTES) {
+        throw new Error("El audio supera el límite de tamaño permitido.");
+      }
+
+      const buffer = Buffer.from(await audioResponse.arrayBuffer());
+
+      if (!buffer.length) {
+        throw new Error("El archivo de audio llegó vacío.");
+      }
+
+      if (buffer.length > MAX_BYTES) {
+        throw new Error("El audio supera el límite de tamaño permitido.");
+      }
+
+      const filename = video.title
+        .replace(/[<>:"/\\|?*\x00-\x1F]/g, "")
+        .slice(0, 90) + ".mp3";
+
+      await sock.sendMessage(
+        jid,
+        {
+          audio: buffer,
+          mimetype: "audio/mpeg",
+          fileName: filename,
+          ptt: false
+        },
+        { quoted: msg }
+      );
+
+    } catch (error) {
+      console.error("[PLAY ERROR]", error);
+
+      let message = "No se pudo descargar la canción.";
+
+      if (/HTTP 403/.test(error.message)) {
+        message = "El servidor de descarga rechazó la solicitud (HTTP 403). Intenta nuevamente más tarde.";
+      } else if (/HTTP 404/.test(error.message)) {
+        message = "El servidor no encontró el audio solicitado.";
+      } else if (/timeout|aborted/i.test(error.message)) {
+        message = "La descarga tardó demasiado. Intenta nuevamente.";
+      } else if (error.message) {
+        message += ` ${error.message}`;
+      }
 
       try {
-        const v = id
-          ? await yts({ videoId: id })
-          : (await yts(input)).videos?.[0]
-        if (v) {
-          video_id = v.videoId || id
-          title = v.title || title
-          seconds = Number(v.seconds) || 0
-        }
-      } catch {}
-
-      if (!video_id) return reply('《✧》No se encontró ningún video.')
-      if (seconds > MAX_SECONDS) return reply('《✧》El video es muy largo (máximo 20 minutos).')
-
-      const buffer = await download(`https://youtu.be/${video_id}`)
-
-      await sock.sendMessage(chat, {
-        audio: buffer,
-        mimetype: 'audio/mpeg',
-        fileName: `${cleanName(title)}.mp3`
-      }, { quoted: msg })
-    } catch (e) {
-      console.error('[ytmp3]', e)
-      await reply(`《✧》No se pudo enviar el audio.\n> ${e.message}`)
+        await reply(message);
+      } catch (replyError) {
+        console.error("[PLAY REPLY ERROR]", replyError);
+      }
     }
   }
-}
+};
 
-export default cmd
-
-const cleanName = (t) =>
-  String(t || 'audio').replace(/[\\/:*?"<>|]/g, '').trim().slice(0, 80) || 'audio'
-
-const getVideoId = (text = '') => {
-  const s = String(text).trim()
-  if (/^(?=.*[A-Z0-9_-])[\w-]{11}$/.test(s)) return s
-  return s.match(
-    /(?:youtu\.be\/|youtube\.com\/(?:watch\?(?:.*&)?v=|embed\/|shorts\/|live\/|v\/))([\w-]{11})/
-  )?.[1] || null
-}
-
-async function download(url) {
-  const res = await fetch(API(url), { signal: AbortSignal.timeout(60_000) })
-  const text = await res.text()
-
-  let json
-  try { json = JSON.parse(text) } catch { throw new Error(`La API respondió HTTP ${res.status}`) }
-
-  const link = findAudioUrl(json)
-  if (!link) throw new Error(`La API no devolvió enlace: ${text.slice(0, 120)}`)
-
-  const audio = await fetch(link, { signal: AbortSignal.timeout(120_000) })
-  if (!audio.ok) throw new Error(`No se pudo bajar el audio: HTTP ${audio.status}`)
-
-  const buffer = Buffer.from(await audio.arrayBuffer())
-  if (buffer.length < 20_000) throw new Error('El archivo de audio llegó vacío o incompleto')
-  return buffer
-}
-
-// Busca en el JSON el enlace del audio sin depender del nombre exacto del campo
-function findAudioUrl(obj) {
-  const found = []
-  const walk = (v, key = '') => {
-    if (typeof v === 'string') {
-      if (/^https?:\/\//i.test(v)) found.push({ key, v })
-    } else if (v && typeof v === 'object') {
-      for (const [k, x] of Object.entries(v)) walk(x, k)
-    }
-  }
-  walk(obj)
-
-  const bad_key = /thumb|image|img|cover|poster|avatar|icon/i
-  const bad_url = /\.(jpe?g|png|webp|gif)(\?|$)|youtu\.?be/i
-  const score = (f) =>
-    (/mp3|audio|download|dl/i.test(f.key) ? 2 : /url|link/i.test(f.key) ? 1 : 0) +
-    (/\.mp3|\.m4a|audio/i.test(f.v) ? 1 : 0)
-
-  return found
-    .filter((f) => !bad_key.test(f.key) && !bad_url.test(f.v))
-    .sort((a, b) => score(b) - score(a))[0]?.v
-}
+export default cmd;
