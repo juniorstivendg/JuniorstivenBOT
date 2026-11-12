@@ -115,7 +115,21 @@ const cmd = {
       await reply("Preparando el audio...");
 
       const apiUrl = `${API}?url=${encodeURIComponent(youtubeUrl)}`;
-      const apiResponse = await request(apiUrl, 2);
+      try {
+      const testAPI = await fetch(apiUrl, {
+        headers: {
+          "User-Agent": "Mozilla/5.0",
+          "Accept": "application/json"
+        },
+        signal: AbortSignal.timeout(30000)
+      });
+      console.log("[PLAY DIAGNOSTICO]", testAPI.status, testAPI.headers.get("server"));
+      console.log("[PLAY RESPUESTA]", (await testAPI.text()).slice(0, 300));
+    } catch (e) {
+      console.log("[PLAY DIAGNOSTICO ERROR]", e.message);
+    }
+
+    const apiResponse = await request(apiUrl, 2);
 
       let data;
       try {
