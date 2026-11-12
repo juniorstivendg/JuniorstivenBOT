@@ -5,12 +5,17 @@
   "type": "module",
   "main": "src/index.js",
   "scripts": {
-    "start": "node src/index.js"
+    "start": "node src/index.js",
+    "restart": "pkill -CONT -f '[n]ode src/index.js' 2>/dev/null || true; pkill -TERM -f '[n]ode src/index.js' 2>/dev/null || true; sleep 2; node src/index.js",
+    "on": "npm start",
+    "off": "pkill -CONT -f '[n]ode src/index.js' 2>/dev/null || true; pkill -TERM -f '[n]ode src/index.js' 2>/dev/null || true; echo 'JUNIORSTIVEN BOT APAGADO'",
+    "pause": "pkill -STOP -f '[n]ode src/index.js' && echo 'JUNIORSTIVEN BOT PAUSADO' || echo 'EL BOT NO ESTA ACTIVO'"
   },
   "dependencies": {
     "@whiskeysockets/baileys": "6.7.24",
     "dotenv": "^16.4.7",
     "pino": "^9.6.0",
-    "qrcode-terminal": "^0.12.0"
+    "qrcode-terminal": "^0.12.0",
+    "sharp": "^0.35.5"
   }
 }

@@ -1,33 +1,52 @@
 import { font } from "./font.js";
 
 export const menu = font(`
-╭━━━━━━━━━━━━━━━━━━━━━━╮
-       🖤 JUNIORSTIVEN BOT
-╰━━━━━━━━━━━━━━━━━━━━━━╯
+               JUNIORSTIVEN BOT
 
-┏━━〔 INFORMACIÓN 〕━━┓
-┃ .menu
-┃ .ping
-┃ .info
-┃ .owner
-┗━━━━━━━━━━━━━━━━━━━┛
+      Juniorstiven, tu mejor botsito ✨
 
-┏━━〔 ADMINISTRACIÓN 〕━━┓
-┃ .admins
-┃ .kick
-┃ .promote
-┃ .demote
-┗━━━━━━━━━━━━━━━━━━━━━━┛
+   
+🛍️️️ ADQUIEREME:
 
-┏━━〔 ENTRETENIMIENTO 〕━━┓
-┃ Próximamente...
-┗━━━━━━━━━━━━━━━━━━━━━━┛
+🎁 Whatsapp: + 57 310 608 3491
+🎁 Instagram: @Juniorstivendg
 
-┏━━〔 ESTADO DEL BOT 〕━━┓
-┃ Versión: 1.0.0
-┃ Desarrollador: JUNIORSTIVEN
-┃ Estado: En desarrollo
-┗━━━━━━━━━━━━━━━━━━━━━━┛
+📌 INFORMACIÓN
 
-       © JUNIORSTIVEN BOT
+🥷🏽 .menu
+🥷🏽 .owner
+
+⚙️ ADMINISTRACIÓN
+
+🥷🏽 .n
+🥷🏽 .kick
+🥷🏽 .todos
+🥷🏽 .admins
+🥷🏽 .mute/mute/mutelist
+🥷🏽 .promote/demote
+🥷🏽 .gon/goff
+🥷🏽 .link
+🥷🏽 .fantasmas
+🥷🏽 .modoadmin on/off
+• welcome on/off
+• bye on/off
+
+🤹🏽 DIVERSION
+
+🥷🏽 .ppt
+🥷🏽 .dado
+🥷🏽 .ship
+🥷🏽 .trivia
+🥷🏽 .tictactoe
+
+📸 STICKERS
+
+🥷🏽 .s
+🥷🏽 .qc
+🥷🏽 .ttp
+🥷🏽 .toimg
+🥷🏽 .smeme
+
+
+©️ JUNIORSTIVEN BOT
 `);

@@ -1,8 +1,23 @@
-export function font(text) {
-  const normal = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-  const bold = "𝗔𝗕𝗖𝗗𝗘𝗙𝗚𝗛𝗜𝗝𝗞𝗟𝗠𝗡𝗢𝗣𝗤𝗥𝗦𝗧𝗨𝗩𝗪𝗫𝗬𝗭𝗮𝗯𝗰𝗱𝗲𝗳𝗴𝗵𝗶𝗷𝗸𝗹𝗺𝗻𝗼𝗽𝗾𝗿𝘀𝘁𝘂𝘃𝘄𝘅𝘆𝘇𝟬𝟭𝟮𝟯𝟰𝟱𝟲𝟳𝟴𝟵";
+const normal = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
 
-  return String(text).replace(/[A-Za-z0-9]/g, char => {
-    return bold[normal.indexOf(char)];
-  });
+const bold = [
+  ...Array.from({ length: 26 }, (_, i) => String.fromCodePoint(0x1D5D4 + i)),
+  ...Array.from({ length: 26 }, (_, i) => String.fromCodePoint(0x1D5EE + i)),
+  ...Array.from({ length: 10 }, (_, i) => String.fromCodePoint(0x1D7EC + i))
+].join("");
+
+const conversion = new Map(
+  Array.from(normal).map((char, i) => [char, Array.from(bold)[i]])
+);
+
+export function font(text) {
+  return String(text).replace(
+    /https?:\/\/[^\s]+|[A-Za-z0-9]+/g,
+    (part) => {
+      if (/^https?:\/\//i.test(part)) return part;
+      return Array.from(part)
+        .map(char => conversion.get(char) || char)
+        .join("");
+    }
+  );
 }

@@ -1,75 +1,251 @@
 import makeWASocket, {
   useMultiFileAuthState,
-  DisconnectReason
+  DisconnectReason,
+  normalizeMessageContent
 } from "@whiskeysockets/baileys";
 
 import pino from "pino";
-import qrcode from "qrcode-terminal";
-import { handleCommand } from "./commands.js";
+import { readFileSync } from "node:fs";
+import { font } from "./font.js";
+
+import {
+  handleCommand,
+  recordActivity,
+  rememberImage,
+  shouldDeleteMuted
+} from "./commands.js";
+
+let reconnectTimer = null;
+let starting = false;
+let stopped = false;
 
 async function startBot() {
-  const { state, saveCreds } = await useMultiFileAuthState("auth_info");
+  if (starting || stopped) return;
 
-  const sock = makeWASocket({
-    auth: state,
-    logger: pino({ level: "silent" }),
-    printQRInTerminal: false
-  });
+  starting = true;
 
-  sock.ev.on("creds.update", saveCreds);
+  try {
+    console.log("Iniciando JUNIORSTIVEN BOT...");
 
-  sock.ev.on("connection.update", ({ connection, lastDisconnect, qr }) => {
-    if (qr) {
-      console.log("\nESCANEA ESTE QR DESDE WHATSAPP:");
-      qrcode.generate(qr, { small: true });
-    }
+    const { state, saveCreds } =
+      await useMultiFileAuthState("auth_info");
 
-    if (connection === "open") {
-      console.log("𝗝𝘂𝗻𝗶𝗼𝗿𝘀𝘁𝗶𝘃𝗲𝗻 𝗕𝗢𝗧 CONECTADO CORRECTAMENTE.");
-    }
+    const sock = makeWASocket({
+      auth: state,
+      logger: pino({ level: "silent" }),
+      printQRInTerminal: false,
+      browser: ["JUNIORSTIVEN BOT", "Chrome", "1.0.0"],
+      syncFullHistory: false,
+      markOnlineOnConnect: true,
+      connectTimeoutMs: 60000,
+      defaultQueryTimeoutMs: 60000
+    });
 
-    if (connection === "close") {
-      const status = lastDisconnect?.error?.output?.statusCode;
+    sock.ev.on("creds.update", saveCreds);
 
-      if (status !== DisconnectReason.loggedOut) {
-        console.log("Conexión cerrada. Intentando reconectar...");
-        startBot();
-      } else {
-        console.log("Sesión cerrada. Debes vincular nuevamente.");
+    sock.ev.on("connection.update", ({ connection, lastDisconnect }) => {
+      if (connection === "connecting") {
+        console.log("Conectando con WhatsApp...");
+      }
+
+      if (connection === "open") {
+        starting = false;
+        console.log("JUNIORSTIVEN BOT CONECTADO.");
+        console.log("Esperando mensajes y comandos...");
+      }
+
+      if (connection === "close") {
+        starting = false;
+
+        const status = lastDisconnect?.error?.output?.statusCode;
+
+        console.log("CONEXIÓN CERRADA. Código:", status);
+
+        if (status === DisconnectReason.loggedOut) {
+          stopped = true;
+          console.log("La sesión fue cerrada por WhatsApp.");
+          return;
+        }
+
+        if (!reconnectTimer && !stopped) {
+          reconnectTimer = setTimeout(() => {
+            reconnectTimer = null;
+            startBot();
+          }, 5000);
+        }
+      }
+    });
+
+  
+  sock.ev.on("group-participants.update", async ({ id, participants, action }) => {
+    if (!["add", "remove", "leave"].includes(action)) return;
+
+    for (const participant of participants || []) {
+      try {
+        const user = typeof participant === "string" ? participant : participant.id;
+        if (!user) continue;
+
+        const username = `@${user.split("@")[0]}`;
+        const entering = action === "add";
+
+        
+      // WELCOME_EVENT_PATCH
+      let welcomeSettings = { welcome: true, bye: true };
+      try {
+        const { readFileSync } = await import("node:fs");
+        welcomeSettings = JSON.parse(
+          readFileSync(new URL("../data/welcome.json", import.meta.url), "utf8")
+        );
+      } catch {}
+      if (entering ? welcomeSettings.welcome === false : welcomeSettings.bye === false) {
+        continue;
+      }
+const caption = entering
+          ? `𝗪𝗘𝗟𝗖𝗢𝗠𝗘 ${username}\n\n• Espero que te sientas a gusto y la pases bien ✌🏽!`
+          : `𝗕𝗬𝗘 ${username}\n\n• No te extrañaremos, ojala no vuelvas 😂!`;
+
+        let avatar = null;
+
+        try {
+          const avatarUrl = await sock.profilePictureUrl(user, "image");
+          const response = await fetch(avatarUrl);
+          if (response.ok) {
+            avatar = Buffer.from(await response.arrayBuffer());
+          }
+        } catch {}
+
+        if (avatar) {
+          await sock.sendMessage(id, {
+            image: avatar,
+            caption,
+            mentions: [user]
+          });
+        } else {
+          await sock.sendMessage(id, {
+            text: caption,
+            mentions: [user]
+          });
+        }
+
+        const audioPath = new URL(
+          entering ? "../media/welcome.mp3" : "../media/bye.mp3",
+          import.meta.url
+        );
+
+        const audio = readFileSync(audioPath);
+
+        await sock.sendMessage(id, {
+          audio,
+          mimetype: "audio/mpeg",
+          ptt: false
+        });
+
+        console.log(
+          entering ? "BIENVENIDA ENVIADA:" : "DESPEDIDA ENVIADA:",
+          user
+        );
+
+      } catch (error) {
+        console.error("ERROR EN BIENVENIDA/DESPEDIDA:", error);
       }
     }
   });
 
   sock.ev.on("messages.upsert", async ({ messages, type }) => {
-    if (type !== "notify") return;
+      if (type !== "notify") return;
 
-    for (const msg of messages) {
-      if (!msg.message || msg.key.fromMe) continue;
+      for (const msg of messages) {
+        try {
+          if (!msg.message) continue;
 
-      const text =
-        msg.message.conversation ||
-        msg.message.extendedTextMessage?.text ||
-        "";
+          const content =
+            normalizeMessageContent(msg.message) || msg.message;
 
-      if (!text.startsWith(".")) continue;
+          const text =
+            content.conversation ||
+            content.extendedTextMessage?.text ||
+            content.imageMessage?.caption ||
+            content.videoMessage?.caption ||
+            content.documentMessage?.caption ||
+            "";
 
-      const command = text.slice(1).trim().split(/\s+/)[0];
+          const jid = msg.key.remoteJid;
 
-      try {
-        const response = await handleCommand(command);
+          if (!jid?.endsWith("@g.us")) continue;
 
-        if (response) {
-          await sock.sendMessage(
-            msg.key.remoteJid,
-            { text: response },
-            { quoted: msg }
+          recordActivity(msg);
+          await rememberImage(msg, sock);
+
+          const cleanText = text.trim();
+
+          if (
+            shouldDeleteMuted(msg) &&
+            !/^\.unmute(?:\s|$)/i.test(cleanText)
+          ) {
+            try {
+              await sock.sendMessage(jid, {
+                delete: msg.key
+              });
+            } catch (error) {
+              console.error("ERROR ELIMINANDO MENSAJE:", error);
+            }
+
+            continue;
+          }
+
+          if (!cleanText.startsWith(".")) continue;
+
+          const parts = cleanText.slice(1).trim().split(/\s+/);
+          const command = parts.shift()?.toLowerCase();
+
+          if (!command) continue;
+
+          console.log("COMANDO DETECTADO:", command);
+
+          const response = await handleCommand(
+            command,
+            sock,
+            msg,
+            parts
           );
+
+          if (response) {
+            await sock.sendMessage(
+              jid,
+              { text: command === "link" ? response : font(response) },
+              { quoted: msg }
+            );
+
+            console.log("RESPUESTA ENVIADA:", command);
+          }
+        } catch (error) {
+          console.error("ERROR PROCESANDO MENSAJE:", error);
         }
-      } catch (error) {
-        console.error("Error ejecutando comando:", error);
       }
+    });
+
+  } catch (error) {
+    console.error("ERROR DE INICIO:", error);
+    starting = false;
+
+    if (!reconnectTimer && !stopped) {
+      reconnectTimer = setTimeout(() => {
+        reconnectTimer = null;
+        startBot();
+      }, 5000);
     }
-  });
+  }
 }
 
-startBot().catch(console.error);
+process.on("SIGINT", () => {
+  stopped = true;
+
+  if (reconnectTimer) {
+    clearTimeout(reconnectTimer);
+  }
+
+  console.log("\nBot detenido. La sesión guardada se conserva.");
+  process.exit(0);
+});
+
+startBot();
