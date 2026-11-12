@@ -217,15 +217,19 @@ const tttGames = new Map();
 
 function loadWelcomeSettings() {
   try {
-    return JSON.parse(fs.readFileSync("data/welcome.json", "utf8"));
+    return JSON.parse(
+      fs.readFileSync(new URL("../data/welcome.json", import.meta.url), "utf8")
+    );
   } catch {
     return {};
   }
 }
 
 function saveWelcomeSettings(settings) {
-  fs.mkdirSync("data", { recursive: true });
-  fs.writeFileSync("data/welcome.json", JSON.stringify(settings, null, 2));
+  const directory = new URL("../data/", import.meta.url);
+  const file = new URL("../data/welcome.json", import.meta.url);
+  fs.mkdirSync(directory, { recursive: true });
+  fs.writeFileSync(file, JSON.stringify(settings, null, 2));
 }
 
 export async function handleCommand(command, sock, msg, args = []) {
