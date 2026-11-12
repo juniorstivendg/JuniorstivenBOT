@@ -15,24 +15,23 @@ export const menu = font(`
 🥷🏽 .menu
 🥷🏽 .owner
 
-⚙️ ADMINISTRACIÓN
+⚙️ ADMINISTRACIÓN:
 
 🥷🏽 .n
 🥷🏽 .kick
+🥷🏽 .link
 🥷🏽 .todos
-🥷🏽 .admins
 🥷🏽 .mute
+🥷🏽 .admins
 🥷🏽 .unmute
 🥷🏽 .mutelist
-🥷🏽 .promote / .demote
-🥷🏽 .gon / .goff
-🥷🏽 .link
+🥷🏽 .gon/goff
 🥷🏽 .fantasmas
+🥷🏽 .promote/demote
 🥷🏽 .modoadmin on/off
-🥷🏽 .welcome on/off
-🥷🏽 .bye on/off
+🥷🏽 .welcome.bye on/off
 
-🤹🏽 DIVERSION
+🤹🏽 DIVERSION:
 
 🥷🏽 .ppt
 🥷🏽 .dado
@@ -40,7 +39,7 @@ export const menu = font(`
 🥷🏽 .trivia
 🥷🏽 .tictactoe
 
-📸 STICKERS
+📸 STICKERS:
 
 🥷🏽 .s
 🥷🏽 .qc
