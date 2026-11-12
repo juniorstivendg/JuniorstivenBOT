@@ -84,11 +84,22 @@ async function groupInfo(sock, jid) {
 }
 
 async function issuerIsAdmin(sock, jid, msg, metadata) {
-  const sender = msg.key.participant || msg.key.remoteJid;
-  const participant = metadata.participants.find(
-    p => normalize(p.id) === normalize(sender)
+  if (msg.key.fromMe) return true;
+
+  const senderIds = [
+    msg.key.participant,
+    msg.key.participantAlt,
+    msg.key.remoteJid,
+    msg.key.remoteJidAlt
+  ].filter(Boolean).map(normalize);
+
+  const participant = metadata.participants.find(p =>
+    [p.id, p.lid, p.phoneNumber]
+      .filter(Boolean)
+      .some(id => senderIds.includes(normalize(id)))
   );
-  return isAdmin(participant) || msg.key.fromMe;
+
+  return isAdmin(participant);
 }
 
 async function downloadImage(imageMessage) {
