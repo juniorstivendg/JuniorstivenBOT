@@ -1,3 +1,7 @@
 node_modules/
 auth_info/
 .env
+
+# Sesiones y respaldos privados
+auth_info/
+auth_info_*/

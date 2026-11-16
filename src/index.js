@@ -5,6 +5,7 @@ import makeWASocket, {
 } from "@whiskeysockets/baileys";
 
 import pino from "pino";
+import qrcode from "qrcode-terminal";
 import { readFileSync } from "node:fs";
 import { font } from "./font.js";
 
@@ -43,7 +44,11 @@ async function startBot() {
 
     sock.ev.on("creds.update", saveCreds);
 
-    sock.ev.on("connection.update", ({ connection, lastDisconnect }) => {
+    sock.ev.on("connection.update", ({ connection, lastDisconnect, qr }) => {
+        if (qr) {
+            console.log("ESCANEA EL QR CON WHATSAPP:");
+            qrcode.generate(qr, { small: true });
+        }
       if (connection === "connecting") {
         console.log("Conectando con WhatsApp...");
       }
