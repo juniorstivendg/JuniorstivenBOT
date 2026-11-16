@@ -5,3 +5,11 @@ auth_info/
 # Sesiones y respaldos privados
 auth_info/
 auth_info_*/
+
+# Respaldos locales
+src/*.backup*
+src/*.antes-*
+src/*.respaldo
+src/.*.swp
+data_backup*/
+backups/
