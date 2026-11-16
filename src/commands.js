@@ -57,30 +57,30 @@ function isAdmin(participant) {
 }
 
 async function groupInfo(sock, jid) {
-  const metadata = await sock.groupMetadata(jid);
+    const metadata = await sock.groupMetadata(jid);
 
-  const botIds = [
-    sock.user?.id,
-    sock.user?.lid
-  ].filter(Boolean).map(normalize);
+    const botIds = [
+        sock.user?.id,
+        sock.user?.lid
+    ].filter(Boolean).map(normalize);
 
-  const bot = metadata.participants.find(p =>
-    [p.id, p.lid].filter(Boolean).some(id =>
-      botIds.includes(normalize(id))
-    )
-  );
+    const bot = metadata.participants.find(p =>
+        [p.id, p.lid].filter(Boolean).some(id =>
+            botIds.includes(normalize(id))
+        )
+    );
 
-  if (!isAdmin(bot)) {
-    console.log("DIAGNÓSTICO DE ADMINISTRADOR:", {
-      botIdentificado: Boolean(bot),
-      botEsAdmin: isAdmin(bot),
-      participantes: metadata.participants.length
+    console.log("DIAGNOSTICO DE ADMINISTRADOR:", {
+        botIdentificado: Boolean(bot),
+        botEsAdmin: isAdmin(bot),
+        participantes: metadata.participants.length
     });
 
-    throw new Error("El bot debe ser administrador de este grupo.");
-  }
+    if (!isAdmin(bot)) {
+        throw new Error("El bot debe ser administrador de este grupo.");
+    }
 
-  return metadata;
+    return metadata;
 }
 
 async function issuerIsAdmin(sock, jid, msg, metadata) {
